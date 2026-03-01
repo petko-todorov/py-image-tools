@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import filedialog
 
@@ -14,6 +15,15 @@ class App(tk.Tk):
         self.last_mode = None
 
         self.selected_path = tk.StringVar(value="No path selected...")
+
+        self.images_count = 0
+
+        self.images_count_label = tk.Label(
+            self,
+            text=self.images_count,
+        )
+        # self.images_count_label.pack()
+        self.images_count_label.pack_forget()
 
         self.setup_ui()
 
@@ -64,11 +74,15 @@ class App(tk.Tk):
         browse_btn = tk.Button(path_frame, text="Browse", command=self.browse_path)
         browse_btn.pack(side="right")
 
+
     def update_ui(self, new_path=None):
         if new_path:
             self.selected_path.set(new_path)
+            if self.work_mode.get() == 2:
+                self.images_count_label.pack()
         else:
             self.selected_path.set("No path selected...")
+            self.images_count_label.pack_forget()
 
         print(self.work_mode.get(), self.selected_path.get())
 
@@ -83,6 +97,9 @@ class App(tk.Tk):
         if path:
             self.update_ui(new_path=path)
 
+        if self.work_mode.get() == 2:
+            self.imgs_count()
+
     def change_mode(self):
         current_mode = self.work_mode.get()
         if current_mode == self.last_mode:
@@ -90,6 +107,12 @@ class App(tk.Tk):
 
         self.last_mode = current_mode
         self.update_ui()
+
+    def imgs_count(self):
+        folder_path = self.selected_path.get()
+        self.images_count = len([x for x in os.listdir(folder_path) if x.endswith((".jpg", ".png", ".webp", ".jpeg"))])
+        self.images_count_label.config(text=f"Number of images: {self.images_count}")
+        print(self.images_count)
 
 
 if __name__ == "__main__":
