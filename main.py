@@ -14,7 +14,7 @@ class App(tk.Tk):
         self.work_mode = tk.IntVar(value=1)
         self.last_mode = None
 
-        self.selected_path = tk.StringVar(value="No path selected...")
+        self.selected_path = tk.StringVar(value="No image selected...")
 
         self.images_count = 0
 
@@ -22,7 +22,6 @@ class App(tk.Tk):
             self,
             text=self.images_count,
         )
-        # self.images_count_label.pack()
         self.images_count_label.pack_forget()
 
         self.setup_ui()
@@ -74,14 +73,16 @@ class App(tk.Tk):
         browse_btn = tk.Button(path_frame, text="Browse", command=self.browse_path)
         browse_btn.pack(side="right")
 
-
     def update_ui(self, new_path=None):
         if new_path:
             self.selected_path.set(new_path)
             if self.work_mode.get() == 2:
                 self.images_count_label.pack()
         else:
-            self.selected_path.set("No path selected...")
+            if self.work_mode.get() == 1:
+                self.selected_path.set("No image selected...")
+            else:
+                self.selected_path.set("No path selected...")
             self.images_count_label.pack_forget()
 
         print(self.work_mode.get(), self.selected_path.get())
@@ -110,6 +111,8 @@ class App(tk.Tk):
 
     def imgs_count(self):
         folder_path = self.selected_path.get()
+        if folder_path == "No path selected...":
+            return
         self.images_count = len([x for x in os.listdir(folder_path) if x.endswith((".jpg", ".png", ".webp", ".jpeg"))])
         self.images_count_label.config(text=f"Number of images: {self.images_count}")
         print(self.images_count)
