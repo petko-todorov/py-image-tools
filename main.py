@@ -1,9 +1,12 @@
 import os
 import tkinter as tk
 from tkinter import filedialog
+from PIL import Image
 
 
 class App(tk.Tk):
+    RESIZE_OPTIONS = ["25%", "33.3%", "50%", "100%", "200%", "400%"]
+
     def __init__(self):
         super().__init__()
 
@@ -24,6 +27,8 @@ class App(tk.Tk):
         )
         self.images_count_label.pack_forget()
 
+        self.resize_percent = tk.StringVar(value="100%")
+
         self.setup_ui()
 
     def setup_ui(self):
@@ -34,7 +39,7 @@ class App(tk.Tk):
             fg="#2c3e50",
             bg="#c2d6d6"
         )
-        title_label.pack(pady=(0, 20))
+        title_label.pack(pady=(0, 5))
 
         mode_frame = tk.LabelFrame(
             self,
@@ -65,15 +70,17 @@ class App(tk.Tk):
         ).pack(anchor="w")
 
         path_frame = tk.Frame(self)
-        path_frame.pack(fill="x", pady=20)
+        path_frame.pack(fill="x", pady=(0, 5))
 
         path_entry = tk.Entry(path_frame, textvariable=self.selected_path, state="readonly", width=40)
         path_entry.pack(side="left", padx=(0, 10), expand=True, fill="x")
 
-        browse_btn = tk.Button(path_frame, text="Browse", command=self.browse_path)
-        browse_btn.pack(side="right")
+        browse_button = tk.Button(path_frame, text="Browse", command=self.browse_path)
+        browse_button.pack(side="right")
 
     def update_ui(self, new_path=None):
+        print(self.resizes.get())
+
         if new_path:
             self.selected_path.set(new_path)
             if self.work_mode.get() == 2:
@@ -95,8 +102,7 @@ class App(tk.Tk):
         else:
             path = filedialog.askdirectory()
 
-        if path:
-            self.update_ui(new_path=path)
+        self.update_ui(new_path=path)
 
         if self.work_mode.get() == 2:
             self.imgs_count()
@@ -113,9 +119,9 @@ class App(tk.Tk):
         folder_path = self.selected_path.get()
         if folder_path == "No path selected...":
             return
+
         self.images_count = len([x for x in os.listdir(folder_path) if x.endswith((".jpg", ".png", ".webp", ".jpeg"))])
-        self.images_count_label.config(text=f"Number of images: {self.images_count}")
-        print(self.images_count)
+        self.images_count_label.config(text=f"Images found: {self.images_count}")
 
 
 if __name__ == "__main__":
