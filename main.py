@@ -25,7 +25,14 @@ class App(tk.Tk):
             self,
             text=self.images_count,
         )
-        self.images_count_label.pack_forget()
+
+        self.settings_frame = tk.LabelFrame(
+            self,
+            text="  Settings  ",
+            labelanchor="n",
+            padx=15,
+            pady=15,
+        )
 
         self.resize_percent = tk.StringVar(value="100%")
 
@@ -69,18 +76,43 @@ class App(tk.Tk):
             command=self.change_mode
         ).pack(anchor="w")
 
-        path_frame = tk.Frame(self)
+        path_frame = tk.LabelFrame(
+            self,
+            text="  Path  ",
+            labelanchor="n",
+            padx=15,
+            pady=10
+        )
         path_frame.pack(fill="x", pady=(0, 5))
 
-        path_entry = tk.Entry(path_frame, textvariable=self.selected_path, state="readonly", width=40)
-        path_entry.pack(side="left", padx=(0, 10), expand=True, fill="x")
+        path_entry = tk.Entry(
+            path_frame,
+            textvariable=self.selected_path,
+            state="readonly",
+        )
+        path_entry.pack(
+            side="left",
+            padx=(0, 10),
+            expand=True,
+            fill="x"
+        )
 
         browse_button = tk.Button(path_frame, text="Browse", command=self.browse_path)
         browse_button.pack(side="right")
 
-    def update_ui(self, new_path=None):
-        print(self.resizes.get())
+        resize_frame = tk.Frame(self.settings_frame)
+        resize_frame.pack(fill="x", pady=(0, 5))
+        tk.Label(
+            resize_frame,
+            text="Resize"
+        ).pack(side="left")
+        tk.OptionMenu(
+            resize_frame,
+            self.resize_percent,
+            *self.RESIZE_OPTIONS
+        ).pack(side="left", padx=(10, 0))
 
+    def update_ui(self, new_path=None):
         if new_path:
             self.selected_path.set(new_path)
             if self.work_mode.get() == 2:
@@ -91,6 +123,7 @@ class App(tk.Tk):
             else:
                 self.selected_path.set("No path selected...")
             self.images_count_label.pack_forget()
+            self.settings_frame.pack_forget()
 
         print(self.work_mode.get(), self.selected_path.get())
 
@@ -102,10 +135,12 @@ class App(tk.Tk):
         else:
             path = filedialog.askdirectory()
 
-        self.update_ui(new_path=path)
+        if path:
+            self.update_ui(new_path=path)
+            self.settings_frame.pack(fill="both", expand=True, pady=10)
 
-        if self.work_mode.get() == 2:
-            self.imgs_count()
+            if self.work_mode.get() == 2:
+                self.imgs_count()
 
     def change_mode(self):
         current_mode = self.work_mode.get()
