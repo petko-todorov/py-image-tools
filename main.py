@@ -13,7 +13,7 @@ class App(tk.Tk):
         super().__init__()
 
         self.title("Image Tools")
-        self.geometry("500x600")
+        self.geometry("700x600")
         self.configure(padx=20, pady=20, bg="#c2d6d6")
 
         self.work_mode = tk.IntVar(value=1)
@@ -44,7 +44,8 @@ class App(tk.Tk):
             pady=10
         )
 
-        columns = ("name", "resolution", "type", "target") # TODO: change
+        columns = ("name", "resolution", "type", "size")
+
         self.tree = ttk.Treeview(
             self.tree_frame,
             columns=columns,
@@ -52,7 +53,7 @@ class App(tk.Tk):
         )
 
         self.resize_percent = tk.StringVar(value="100%")
-
+        self.resize_percent.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
         self.setup_ui()
 
     def setup_ui(self):
@@ -138,14 +139,14 @@ class App(tk.Tk):
         )
 
         self.tree.heading("name", text="Name")
-        self.tree.heading("resolution", text="Resolution")
-        self.tree.heading("type", text="From")
-        self.tree.heading("target", text="To")
+        self.tree.heading("resolution", text="Resolution (Old -> New)")
+        self.tree.heading("type", text="Type (Old -> New)")
+        self.tree.heading("size", text="Original Size")
 
         self.tree.column("name", width=150)
-        self.tree.column("resolution", width=100)
-        self.tree.column("type", width=60)
-        self.tree.column("target", width=60)
+        self.tree.column("resolution", width=180)
+        self.tree.column("type", width=100)
+        self.tree.column("size", width=70)
 
         self.tree.pack(side="left", fill="both", expand=True)
 
@@ -210,22 +211,33 @@ class App(tk.Tk):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        valid_extensions = (".jpg", ".png", ".webp", ".jpeg")
-        files = []
+        scale = float(self.resize_percent.get().replace('%', '')) / 100
+        target_format = "JPG"  # TODO
 
-        if os.path.isfile(path):
-            files.append(path)
-        elif os.path.isdir(path):
-            files = [os.path.join(path, f) for f in os.listdir(path)
-                     if f.lower().endswith(valid_extensions)]
+        valid_extensions = (".jpg", ".png", ".webp", ".jpeg")  # TODO
+        files = [os.path.join(path, f) for f in os.listdir(path) if
+                 f.lower().endswith(valid_extensions)] if os.path.isdir(path) else (
+            [path] if os.path.isfile(path) else [])
 
         for image_path in files:
             with Image.open(image_path) as image:
                 name = os.path.basename(image_path)
-                res = f"{image.width}x{image.height}"
-                fmt = image.format
-                target = "WEBP"  # TODO: change
-                self.tree.insert("", "end", values=(name, res, fmt, target))
+                source_fmt = image.format
+
+                new_w, new_h = int(image.width * scale), int(image.height * scale)
+                res_display = f"{image.width}x{image.height} -> {new_w}x{new_h}"
+
+                type_display = f"{source_fmt} -> {target_format.upper()}"
+
+                orig_bytes = os.path.getsize(image_path)
+                orig_kb = orig_bytes / 1024
+
+                if orig_kb < 1024:
+                    size_display = f"{orig_kb:.1f} KB"
+                else:
+                    size_display = f"{orig_kb / 1024:.2f} MB"
+
+                self.tree.insert("", "end", values=(name, res_display, type_display, size_display))
 
     def start_processing(self, path):
         percent_str = self.resize_percent.get()
@@ -252,9 +264,12 @@ class App(tk.Tk):
 
                 resized_img = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-                save_path = Path(output_dir) / Path(file_path).with_suffix('.webp').name
+                if resized_img.mode in ("RGBA", "P"):
+                    resized_img = resized_img.convert("RGB")
+
+                save_path = Path(output_dir) / Path(file_path).with_suffix('.jpeg').name  # TODO change with_suffix
                 # TODO: add quality option
-                resized_img.save(save_path, "webp")
+                resized_img.save(save_path, "jpeg", quality=5)  # TODO: change format
 
 
 if __name__ == "__main__":
