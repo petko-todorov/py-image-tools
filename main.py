@@ -1,6 +1,8 @@
 import os
 import tkinter as tk
+from pathlib import Path
 from tkinter import filedialog
+
 from PIL import Image
 
 
@@ -111,6 +113,14 @@ class App(tk.Tk):
             self.resize_percent,
             *self.RESIZE_OPTIONS
         ).pack(side="left", padx=(10, 0))
+        tk.Button(
+            resize_frame,
+            text="Apply",
+            command=lambda: self.start_processing(self.selected_path.get())
+        ).pack(
+            side="bottom",
+            padx=(0, 10)
+        )
 
     def update_ui(self, new_path=None):
         if new_path:
@@ -157,6 +167,35 @@ class App(tk.Tk):
 
         self.images_count = len([x for x in os.listdir(folder_path) if x.endswith((".jpg", ".png", ".webp", ".jpeg"))])
         self.images_count_label.config(text=f"Images found: {self.images_count}")
+
+    def start_processing(self, path):
+        percent_str = self.resize_percent.get()
+        scale_factor = float(percent_str.replace('%', '')) / 100
+
+        files_to_process = []
+
+        if os.path.isfile(path):
+            files_to_process.append(path)
+            output_dir = os.path.join(os.path.dirname(path), "output")
+        else:  # os.path.isdir(path):
+            valid_extensions = (".jpg", ".png", ".webp", ".jpeg")
+            files_to_process = [os.path.join(path, f) for f in os.listdir(path)
+                                if f.lower().endswith(valid_extensions)]
+            output_dir = os.path.join(path, "output")
+
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        for file_path in files_to_process:
+            with Image.open(file_path) as image:
+                new_w = int(image.width * scale_factor)
+                new_h = int(image.height * scale_factor)
+
+                resized_img = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+                save_path = Path(output_dir) / Path(file_path).with_suffix('.webp').name
+                # TODO: add quality option
+                resized_img.save(save_path, "webp")
 
 
 if __name__ == "__main__":
