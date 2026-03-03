@@ -1,7 +1,7 @@
 import os
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog
+from tkinter import filedialog, ttk
 
 from PIL import Image
 
@@ -34,6 +34,21 @@ class App(tk.Tk):
             labelanchor="n",
             padx=15,
             pady=15,
+        )
+
+        self.tree_frame = tk.LabelFrame(
+            self,
+            text="  Images List & Info  ",
+            labelanchor="n",
+            padx=10,
+            pady=10
+        )
+
+        columns = ("name", "resolution", "type", "target") # TODO: change
+        self.tree = ttk.Treeview(
+            self.tree_frame,
+            columns=columns,
+            show="headings",
         )
 
         self.resize_percent = tk.StringVar(value="100%")
@@ -122,6 +137,26 @@ class App(tk.Tk):
             padx=(0, 10)
         )
 
+        self.tree.heading("name", text="Name")
+        self.tree.heading("resolution", text="Resolution")
+        self.tree.heading("type", text="From")
+        self.tree.heading("target", text="To")
+
+        self.tree.column("name", width=150)
+        self.tree.column("resolution", width=100)
+        self.tree.column("type", width=60)
+        self.tree.column("target", width=60)
+
+        self.tree.pack(side="left", fill="both", expand=True)
+
+        scroller = ttk.Scrollbar(
+            self.tree_frame,
+            orient="vertical",
+            command=self.tree.yview,
+        )
+        self.tree.configure(yscrollcommand=scroller.set)
+        scroller.pack(side="right", fill="y")
+
     def update_ui(self, new_path=None):
         if new_path:
             self.selected_path.set(new_path)
@@ -134,6 +169,7 @@ class App(tk.Tk):
                 self.selected_path.set("No path selected...")
             self.images_count_label.pack_forget()
             self.settings_frame.pack_forget()
+            self.tree_frame.pack_forget()
 
         print(self.work_mode.get(), self.selected_path.get())
 
@@ -149,6 +185,8 @@ class App(tk.Tk):
             self.update_ui(new_path=path)
             self.settings_frame.pack(fill="both", expand=True, pady=10)
 
+            self.tree_frame.pack(fill="both", expand=True, pady=10)
+            self.populate_tree(path)
             if self.work_mode.get() == 2:
                 self.imgs_count()
 
@@ -167,6 +205,27 @@ class App(tk.Tk):
 
         self.images_count = len([x for x in os.listdir(folder_path) if x.endswith((".jpg", ".png", ".webp", ".jpeg"))])
         self.images_count_label.config(text=f"Images found: {self.images_count}")
+
+    def populate_tree(self, path):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        valid_extensions = (".jpg", ".png", ".webp", ".jpeg")
+        files = []
+
+        if os.path.isfile(path):
+            files.append(path)
+        elif os.path.isdir(path):
+            files = [os.path.join(path, f) for f in os.listdir(path)
+                     if f.lower().endswith(valid_extensions)]
+
+        for image_path in files:
+            with Image.open(image_path) as image:
+                name = os.path.basename(image_path)
+                res = f"{image.width}x{image.height}"
+                fmt = image.format
+                target = "WEBP"  # TODO: change
+                self.tree.insert("", "end", values=(name, res, fmt, target))
 
     def start_processing(self, path):
         percent_str = self.resize_percent.get()
