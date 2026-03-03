@@ -44,7 +44,7 @@ class App(tk.Tk):
             pady=10
         )
 
-        columns = ("name", "resolution", "type", "size")
+        columns = ("name", "resolution", "type", "old_size", "new_size")
 
         self.tree = ttk.Treeview(
             self.tree_frame,
@@ -141,12 +141,14 @@ class App(tk.Tk):
         self.tree.heading("name", text="Name")
         self.tree.heading("resolution", text="Resolution (Old -> New)")
         self.tree.heading("type", text="Type (Old -> New)")
-        self.tree.heading("size", text="Original Size")
+        self.tree.heading("old_size", text="Original Size")
+        self.tree.heading("new_size", text="New Size")
 
         self.tree.column("name", width=150)
         self.tree.column("resolution", width=180)
         self.tree.column("type", width=100)
-        self.tree.column("size", width=70)
+        self.tree.column("old_size", width=70)
+        self.tree.column("new_size", width=70)
 
         self.tree.pack(side="left", fill="both", expand=True)
 
@@ -257,6 +259,8 @@ class App(tk.Tk):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
+        processed_results = []
+
         for file_path in files_to_process:
             with Image.open(file_path) as image:
                 new_w = int(image.width * scale_factor)
@@ -270,6 +274,32 @@ class App(tk.Tk):
                 save_path = Path(output_dir) / Path(file_path).with_suffix('.jpeg').name  # TODO change with_suffix
                 # TODO: add quality option
                 resized_img.save(save_path, "jpeg", quality=5)  # TODO: change format
+
+                new_size = os.path.getsize(save_path)
+                processed_results.append({
+                    "name": os.path.basename(file_path),
+                    "resolution": f"{image.width}x{image.height} -> {new_w}x{new_h}",
+                    "type": f"{image.format} -> JPEG",
+                    "old_size": self.format_size(os.path.getsize(file_path)),
+                    "new_size": self.format_size(new_size)
+                })
+
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        for res in processed_results:
+            self.tree.insert(
+                "",
+                "end",
+                values=(res["name"], res["resolution"], res["type"], res["old_size"], res["new_size"])
+            )
+
+    @staticmethod
+    def format_size(bytes_size):
+        kb = bytes_size / 1024
+        if kb < 1024:
+            return f"{kb:.1f} KB"
+        return f"{kb / 1024:.2f} MB"
 
 
 if __name__ == "__main__":
