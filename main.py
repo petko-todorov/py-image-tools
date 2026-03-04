@@ -8,13 +8,14 @@ from PIL import Image
 
 class App(tk.Tk):
     RESIZE_OPTIONS = ["25%", "33.3%", "50%", "100%", "200%", "400%"]
+    FILES_TYPES = ["JPG", "PNG", "WEBP", "JPEG"]
 
     def __init__(self):
         super().__init__()
 
         self.title("Image Tools")
-        self.geometry("700x600")
-        self.configure(padx=20, pady=20, bg="#c2d6d6")
+        self.geometry("700x800")
+        self.configure(padx=20, pady=2, bg="#c2d6d6")
 
         self.work_mode = tk.IntVar(value=2)
         self.last_mode = None
@@ -30,6 +31,10 @@ class App(tk.Tk):
             padx=15,
             pady=15,
         )
+
+        self.target_format = tk.StringVar(value="WEBP")
+        self.target_format.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
+        self.target_format_types = self.FILES_TYPES
 
         self.quality = tk.IntVar(value=75)
         self.quality.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
@@ -126,6 +131,25 @@ class App(tk.Tk):
         )
         browse_button.pack(side="right")
 
+        format_frame = tk.Frame(self.settings_frame)
+        format_frame.pack(fill="x", pady=(0, 5))
+        inner_container_format = tk.Frame(format_frame)
+        inner_container_format.pack(anchor="center")
+        tk.Label(
+            inner_container_format,
+            text="Target Format"
+        ).pack(side="left")
+        format_options = ttk.Combobox(
+            inner_container_format,
+            textvariable=self.target_format,
+            values=self.target_format_types,
+            state="readonly",
+            font=("Arial", 14),
+            width=15
+        )
+        format_options.bind("<<ComboboxSelected>>", lambda e: inner_container_format.focus())
+        format_options.pack(side="left", padx=(10, 0))
+
         resize_frame = tk.Frame(self.settings_frame)
         resize_frame.pack(fill="x", pady=(0, 5))
         inner_container_resize = tk.Frame(resize_frame)
@@ -206,10 +230,10 @@ class App(tk.Tk):
             else:
                 self.selected_path.set("No path selected...")
             self.settings_frame.pack_forget()
+            self.target_format.set("WEBP")
+            self.resize_percent.set("100%")
             self.quality.set(75)
             self.tree_frame.pack_forget()
-
-        print(self.work_mode.get(), self.selected_path.get())
 
     def browse_path(self):
         if self.work_mode.get() == 1:
@@ -249,12 +273,15 @@ class App(tk.Tk):
             self.tree.delete(item)
 
         scale = float(self.resize_percent.get().replace('%', '')) / 100
-        target_format = "JPG"  # TODO
+        target_format = self.target_format.get()
 
-        valid_extensions = (".jpg", ".png", ".webp", ".jpeg")  # TODO
-        files = [os.path.join(path, f) for f in os.listdir(path) if
-                 f.lower().endswith(valid_extensions)] if os.path.isdir(path) else (
-            [path] if os.path.isfile(path) else [])
+        valid_extensions = {f".{ext.lower()}" for ext in self.FILES_TYPES}
+        if Path(path).is_dir():
+            files = [str(p) for p in Path(path).iterdir() if p.suffix.lower() in valid_extensions]
+        elif Path(path).is_file():
+            files = [path]
+        else:
+            files = []
 
         for image_path in files:
             with Image.open(image_path) as image:
@@ -306,9 +333,8 @@ class App(tk.Tk):
                 if resized_img.mode in ("RGBA", "P"):
                     resized_img = resized_img.convert("RGB")
 
-                save_path = Path(output_dir) / Path(file_path).with_suffix('.jpeg').name  # TODO change with_suffix
-                # TODO: add quality option
-                resized_img.save(save_path, "jpeg", quality=5)  # TODO: change format
+                save_path = Path(output_dir) / Path(file_path).with_suffix(f".{self.target_format.get()}").name
+                resized_img.save(save_path, self.target_format.get(), quality=self.quality.get())
 
                 new_size = os.path.getsize(save_path)
                 processed_results.append({
