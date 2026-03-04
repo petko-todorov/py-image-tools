@@ -24,6 +24,14 @@ class App(tk.Tk):
 
         self.images_count = 0
 
+        self.no_images_label = tk.Label(
+            self,
+            text="No images found in the selected folder.",
+            font=("Arial", 15),
+            bg="#c2d6d6",
+            fg="#800020"
+        )
+
         self.settings_frame = tk.LabelFrame(
             self,
             text="  Settings  ",
@@ -229,11 +237,13 @@ class App(tk.Tk):
                 self.selected_path.set("No image selected...")
             else:
                 self.selected_path.set("No path selected...")
+
             self.settings_frame.pack_forget()
             self.target_format.set("WEBP")
             self.resize_percent.set("100%")
             self.quality.set(75)
             self.tree_frame.pack_forget()
+            self.no_images_label.pack_forget()
 
     def browse_path(self):
         if self.work_mode.get() == 1:
@@ -245,12 +255,22 @@ class App(tk.Tk):
 
         if path:
             self.update_ui(new_path=path)
-            self.settings_frame.pack(fill="both", expand=True, pady=(0, 5))
+            valid_extensions = (".jpg", ".png", ".webp", ".jpeg")
+            if os.path.isdir(path):
+                files = [f for f in os.listdir(path) if f.lower().endswith(valid_extensions)]
+                count = len(files)
+            else:
+                count = 1 if path.lower().endswith(valid_extensions) else 0
 
-            self.tree_frame.pack(fill="both", expand=True, pady=(0, 5))
-            self.populate_tree(path)
-            if self.work_mode.get() == 2:
-                self.imgs_count()
+            if count > 0:
+                self.settings_frame.pack(fill="both", expand=True, pady=(0, 5))
+                self.tree_frame.pack(fill="both", expand=True, pady=(0, 5))
+                self.populate_tree(path)
+                if self.work_mode.get() == 2:
+                    self.images_count = count
+                    self.settings_frame.config(text=f"  Settings (Images found: {self.images_count})  ")
+            else:
+                self.no_images_label.pack(pady=50)
 
     def change_mode(self):
         current_mode = self.work_mode.get()
