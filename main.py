@@ -16,17 +16,12 @@ class App(tk.Tk):
         self.geometry("700x600")
         self.configure(padx=20, pady=20, bg="#c2d6d6")
 
-        self.work_mode = tk.IntVar(value=1)
+        self.work_mode = tk.IntVar(value=2)
         self.last_mode = None
 
         self.selected_path = tk.StringVar(value="No image selected...")
 
         self.images_count = 0
-
-        self.images_count_label = tk.Label(
-            self,
-            text=self.images_count,
-        )
 
         self.settings_frame = tk.LabelFrame(
             self,
@@ -35,6 +30,9 @@ class App(tk.Tk):
             padx=15,
             pady=15,
         )
+
+        self.quality = tk.IntVar(value=75)
+        self.quality.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
 
         self.tree_frame = tk.LabelFrame(
             self,
@@ -75,7 +73,7 @@ class App(tk.Tk):
         )
         mode_frame.pack(
             fill="x",
-            pady=10
+            pady=(0, 5)
         )
 
         tk.Radiobutton(
@@ -83,7 +81,8 @@ class App(tk.Tk):
             text="Single Image File",
             variable=self.work_mode,
             value=1,
-            command=self.change_mode
+            command=self.change_mode,
+            font=("Arial", 10)
         ).pack(anchor="w")
 
         tk.Radiobutton(
@@ -91,7 +90,8 @@ class App(tk.Tk):
             text="Entire Folder (Batch)",
             variable=self.work_mode,
             value=2,
-            command=self.change_mode
+            command=self.change_mode,
+            font=("Arial", 10)
         ).pack(anchor="w")
 
         path_frame = tk.LabelFrame(
@@ -107,6 +107,8 @@ class App(tk.Tk):
             path_frame,
             textvariable=self.selected_path,
             state="readonly",
+            width=40,
+            font=("Arial", 11)
         )
         path_entry.pack(
             side="left",
@@ -115,28 +117,61 @@ class App(tk.Tk):
             fill="x"
         )
 
-        browse_button = tk.Button(path_frame, text="Browse", command=self.browse_path)
+        browse_button = tk.Button(
+            path_frame,
+            text="Browse",
+            command=self.browse_path,
+            width=10,
+            height=2
+        )
         browse_button.pack(side="right")
 
         resize_frame = tk.Frame(self.settings_frame)
         resize_frame.pack(fill="x", pady=(0, 5))
+        inner_container_resize = tk.Frame(resize_frame)
+        inner_container_resize.pack(anchor="center")
         tk.Label(
-            resize_frame,
-            text="Resize"
+            inner_container_resize,
+            text="Resize",
         ).pack(side="left")
-        tk.OptionMenu(
-            resize_frame,
-            self.resize_percent,
-            *self.RESIZE_OPTIONS
-        ).pack(side="left", padx=(10, 0))
-        tk.Button(
-            resize_frame,
-            text="Apply",
-            command=lambda: self.start_processing(self.selected_path.get())
-        ).pack(
-            side="bottom",
-            padx=(0, 10)
+        resize_options = ttk.Combobox(
+            inner_container_resize,
+            textvariable=self.resize_percent,
+            values=self.RESIZE_OPTIONS,
+            state="readonly",
+            font=("Arial", 14),
+            width=15,
         )
+        resize_options.bind("<<ComboboxSelected>>", lambda e: inner_container_resize.focus())
+        resize_options.pack(side="left", padx=(10, 0))
+
+        quality_frame = tk.Frame(self.settings_frame)
+        quality_frame.pack(fill="x", pady=5)
+        inner_container_quality = tk.Frame(quality_frame)
+        inner_container_quality.pack(anchor="center")
+        tk.Label(
+            inner_container_quality,
+            text="Quality"
+        ).pack(side="left")
+        tk.Scale(
+            inner_container_quality,
+            from_=0,
+            to=100,
+            orient="horizontal",
+            variable=self.quality,
+            width=30,
+            length=400,
+            tickinterval=10,
+            font=("Arial", 13),
+        ).pack(pady=(0, 5), side="left")
+
+        tk.Button(
+            self.settings_frame,
+            text="Start",
+            command=lambda: self.start_processing(self.selected_path.get()),
+            width=10,
+            height=2
+        ).pack(side="bottom", pady=(10, 0))
 
         self.tree.heading("name", text="Name")
         self.tree.heading("resolution", text="Resolution (Old -> New)")
@@ -159,19 +194,19 @@ class App(tk.Tk):
         )
         self.tree.configure(yscrollcommand=scroller.set)
         scroller.pack(side="right", fill="y")
+        self.browse_path()
+        # TODO: Add progress bar
 
     def update_ui(self, new_path=None):
         if new_path:
             self.selected_path.set(new_path)
-            if self.work_mode.get() == 2:
-                self.images_count_label.pack()
         else:
             if self.work_mode.get() == 1:
                 self.selected_path.set("No image selected...")
             else:
                 self.selected_path.set("No path selected...")
-            self.images_count_label.pack_forget()
             self.settings_frame.pack_forget()
+            self.quality.set(75)
             self.tree_frame.pack_forget()
 
         print(self.work_mode.get(), self.selected_path.get())
@@ -186,9 +221,9 @@ class App(tk.Tk):
 
         if path:
             self.update_ui(new_path=path)
-            self.settings_frame.pack(fill="both", expand=True, pady=10)
+            self.settings_frame.pack(fill="both", expand=True, pady=(0, 5))
 
-            self.tree_frame.pack(fill="both", expand=True, pady=10)
+            self.tree_frame.pack(fill="both", expand=True, pady=(0, 5))
             self.populate_tree(path)
             if self.work_mode.get() == 2:
                 self.imgs_count()
@@ -207,7 +242,7 @@ class App(tk.Tk):
             return
 
         self.images_count = len([x for x in os.listdir(folder_path) if x.endswith((".jpg", ".png", ".webp", ".jpeg"))])
-        self.images_count_label.config(text=f"Images found: {self.images_count}")
+        self.settings_frame.config(text=f"  Settings (Images found: {self.images_count})  ")
 
     def populate_tree(self, path):
         for item in self.tree.get_children():
