@@ -1,4 +1,5 @@
 import os
+import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, ttk
@@ -17,7 +18,7 @@ class App(tk.Tk):
         self.geometry("700x800")
         self.configure(padx=20, pady=2, bg="#c2d6d6")
 
-        self.work_mode = tk.IntVar(value=2)
+        self.work_mode = tk.IntVar(value=1)
         self.last_mode = None
 
         self.selected_path = tk.StringVar(value="No image selected...")
@@ -47,6 +48,14 @@ class App(tk.Tk):
         self.quality = tk.IntVar(value=75)
         self.quality.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
 
+        self.start_button = tk.Button(
+            self.settings_frame,
+            text="Start",
+            command=self.run_processing_thread,
+            width=10,
+            height=2
+        )
+
         self.tree_frame = tk.LabelFrame(
             self,
             text="  Images List & Info  ",
@@ -65,6 +74,13 @@ class App(tk.Tk):
 
         self.resize_percent = tk.StringVar(value="100%")
         self.resize_percent.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
+
+        self.progress = ttk.Progressbar(
+            self.settings_frame,
+            orient="horizontal",
+            length=400,
+        )
+
         self.setup_ui()
 
     def setup_ui(self):
@@ -130,14 +146,14 @@ class App(tk.Tk):
             fill="x"
         )
 
-        browse_button = tk.Button(
+        self.browse_button = tk.Button(
             path_frame,
             text="Browse",
             command=self.browse_path,
             width=10,
             height=2
         )
-        browse_button.pack(side="right")
+        self.browse_button.pack(side="right")
 
         format_frame = tk.Frame(self.settings_frame)
         format_frame.pack(fill="x", pady=(0, 5))
@@ -197,13 +213,13 @@ class App(tk.Tk):
             font=("Arial", 13),
         ).pack(pady=(0, 5), side="left")
 
-        tk.Button(
-            self.settings_frame,
-            text="Start",
-            command=lambda: self.start_processing(self.selected_path.get()),
-            width=10,
-            height=2
-        ).pack(side="bottom", pady=(10, 0))
+        self.start_button.pack(pady=10)
+
+        self.progress.pack(
+            fill="x",
+            padx=50,
+            pady=10,
+        )
 
         self.tree.heading("name", text="Name")
         self.tree.heading("resolution", text="Resolution (Old -> New)")
@@ -226,10 +242,14 @@ class App(tk.Tk):
         )
         self.tree.configure(yscrollcommand=scroller.set)
         scroller.pack(side="right", fill="y")
-        self.browse_path()
-        # TODO: Add progress bar
 
     def update_ui(self, new_path=None):
+        self.no_images_label.pack_forget()
+        self.settings_frame.pack_forget()
+        self.target_format.set("WEBP")
+        self.resize_percent.set("100%")
+        self.quality.set(75)
+        self.tree_frame.pack_forget()
         if new_path:
             self.selected_path.set(new_path)
         else:
@@ -238,14 +258,8 @@ class App(tk.Tk):
             else:
                 self.selected_path.set("No path selected...")
 
-            self.settings_frame.pack_forget()
-            self.target_format.set("WEBP")
-            self.resize_percent.set("100%")
-            self.quality.set(75)
-            self.tree_frame.pack_forget()
-            self.no_images_label.pack_forget()
-
     def browse_path(self):
+        self.start_button.config(state="normal")
         if self.work_mode.get() == 1:
             path = filedialog.askopenfilename(
                 filetypes=[("Images", "*.jpg *.png *.webp *.jpeg")]
@@ -323,6 +337,17 @@ class App(tk.Tk):
 
                 self.tree.insert("", "end", values=(name, res_display, type_display, size_display))
 
+    def run_processing_thread(self):
+        path = self.selected_path.get()
+        if not path or path.startswith("No"):
+            return
+
+        self.start_button.config(state="disabled")
+
+        thread = threading.Thread(target=self.start_processing, args=(path,))
+        thread.daemon = True
+        thread.start()
+
     def start_processing(self, path):
         percent_str = self.resize_percent.get()
         scale_factor = float(percent_str.replace('%', '')) / 100
@@ -341,30 +366,48 @@ class App(tk.Tk):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
+        total_files = len(files_to_process)
+        self.progress["maximum"] = total_files
+        self.progress["value"] = 0
+
+        ext = self.target_format.get().lower()
         processed_results = []
 
-        for file_path in files_to_process:
-            with Image.open(file_path) as image:
-                new_w = int(image.width * scale_factor)
-                new_h = int(image.height * scale_factor)
+        for index, file_path in enumerate(files_to_process, start=1):
+            try:
+                with Image.open(file_path) as image:
+                    new_w = int(image.width * scale_factor)
+                    new_h = int(image.height * scale_factor)
 
-                resized_img = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                    new_img = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                    if new_img.mode in ("RGBA", "P"):
+                        new_img = new_img.convert("RGB")
 
-                if resized_img.mode in ("RGBA", "P"):
-                    resized_img = resized_img.convert("RGB")
+                    save_path = Path(output_dir) / Path(file_path).with_suffix(f".{ext}").name
+                    new_img.save(
+                        save_path,
+                        ext,
+                        quality=self.quality.get()
+                    )
 
-                save_path = Path(output_dir) / Path(file_path).with_suffix(f".{self.target_format.get()}").name
-                resized_img.save(save_path, self.target_format.get(), quality=self.quality.get())
+                    new_size = os.path.getsize(save_path)
+                    processed_results.append({
+                        "name": os.path.basename(file_path),
+                        "resolution": f"{image.width}x{image.height} -> {new_w}x{new_h}",
+                        "type": f"{image.format} -> JPEG",
+                        "old_size": self.format_size(os.path.getsize(file_path)),
+                        "new_size": self.format_size(new_size)
+                    })
 
-                new_size = os.path.getsize(save_path)
-                processed_results.append({
-                    "name": os.path.basename(file_path),
-                    "resolution": f"{image.width}x{image.height} -> {new_w}x{new_h}",
-                    "type": f"{image.format} -> JPEG",
-                    "old_size": self.format_size(os.path.getsize(file_path)),
-                    "new_size": self.format_size(new_size)
-                })
+                    self.progress["value"] = index
+                    self.update_idletasks()
+            except:
+                self.progress["value"] = index
+                self.update_idletasks()
 
+        self.after(0, lambda: self.finish_ui_update(processed_results))
+
+    def finish_ui_update(self, processed_results):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
@@ -374,6 +417,7 @@ class App(tk.Tk):
                 "end",
                 values=(res["name"], res["resolution"], res["type"], res["old_size"], res["new_size"])
             )
+        self.start_button.config(state="normal")
 
     @staticmethod
     def format_size(bytes_size):
