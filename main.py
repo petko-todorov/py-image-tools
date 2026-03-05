@@ -23,6 +23,9 @@ class App(tk.Tk):
 
         self.selected_path = tk.StringVar(value="No image selected...")
 
+        self.single_image_mode = None
+        self.batch_folder_mode = None
+
         self.browse_button = None
         self.images_count = 0
 
@@ -106,23 +109,25 @@ class App(tk.Tk):
             pady=(0, 5)
         )
 
-        tk.Radiobutton(
+        self.single_image_mode = tk.Radiobutton(
             mode_frame,
             text="Single Image File",
             variable=self.work_mode,
             value=1,
             command=self.change_mode,
             font=("Arial", 10)
-        ).pack(anchor="w")
+        )
+        self.single_image_mode.pack(anchor="w")
 
-        tk.Radiobutton(
+        self.batch_folder_mode = tk.Radiobutton(
             mode_frame,
             text="Entire Folder (Batch)",
             variable=self.work_mode,
             value=2,
             command=self.change_mode,
             font=("Arial", 10)
-        ).pack(anchor="w")
+        )
+        self.batch_folder_mode.pack(anchor="w")
 
         path_frame = tk.LabelFrame(
             self,
@@ -373,44 +378,39 @@ class App(tk.Tk):
         self.progress["maximum"] = total_files
         self.progress["value"] = 0
 
-        ext = self.target_format.get().lower()
+        target_ext = self.target_format.get().lower()
         processed_results = []
 
         for index, file_path in enumerate(files_to_process, start=1):
-            try:
-                with Image.open(file_path) as image:
-                    new_w = int(image.width * scale_factor)
-                    new_h = int(image.height * scale_factor)
+            with Image.open(file_path) as image:
+                new_w = int(image.width * scale_factor)
+                new_h = int(image.height * scale_factor)
 
-                    new_img = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                    if new_img.mode in ("RGBA", "P"):
-                        new_img = new_img.convert("RGB")
+                new_img = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-                    save_path = Path(output_dir) / Path(file_path).with_suffix(f".{ext}").name
-                    new_img.save(
-                        save_path,
-                        ext,
-                        quality=self.quality.get()
-                    )
+                save_format = "JPEG" if target_ext in ["jpg", "jpeg"] else target_ext.upper()
+                if save_format == "JPEG" and new_img.mode in ("RGBA", "P", "LA"):
+                    new_img = new_img.convert("RGB")
 
-                    new_size = os.path.getsize(save_path)
-                    processed_results.append({
-                        "name": os.path.basename(file_path),
-                        "resolution": f"{image.width}x{image.height} -> {new_w}x{new_h}",
-                        "type": f"{image.format} -> JPEG",
-                        "old_size": self.format_size(os.path.getsize(file_path)),
-                        "new_size": self.format_size(new_size)
-                    })
+                save_path = Path(output_dir) / Path(file_path).with_suffix(f".{target_ext}").name
+                new_img.save(
+                    save_path,
+                    save_format,
+                    quality=self.quality.get()
+                )
 
-                    self.progress["value"] = index
-                    self.update_idletasks()
-            except:
+                new_size = os.path.getsize(save_path)
+                processed_results.append({
+                    "name": os.path.basename(file_path),
+                    "resolution": f"{image.width}x{image.height} -> {new_w}x{new_h}",
+                    "type": f"{image.format} -> {target_ext.upper()}",
+                    "old_size": self.format_size(os.path.getsize(file_path)),
+                    "new_size": self.format_size(new_size)
+                })
+
                 self.progress["value"] = index
                 self.update_idletasks()
 
-        self.after(0, lambda: self.finish_ui_update(processed_results))
-
-    def finish_ui_update(self, processed_results):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
