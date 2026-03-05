@@ -23,6 +23,7 @@ class App(tk.Tk):
 
         self.selected_path = tk.StringVar(value="No image selected...")
 
+        self.browse_button = None
         self.images_count = 0
 
         self.no_images_label = tk.Label(
@@ -260,6 +261,7 @@ class App(tk.Tk):
 
     def browse_path(self):
         self.start_button.config(state="normal")
+        self.browse_button.config(state="normal")
         if self.work_mode.get() == 1:
             path = filedialog.askopenfilename(
                 filetypes=[("Images", "*.jpg *.png *.webp *.jpeg")]
@@ -343,6 +345,7 @@ class App(tk.Tk):
             return
 
         self.start_button.config(state="disabled")
+        self.browse_button.config(state="disabled")
 
         thread = threading.Thread(target=self.start_processing, args=(path,))
         thread.daemon = True
@@ -418,6 +421,7 @@ class App(tk.Tk):
                 values=(res["name"], res["resolution"], res["type"], res["old_size"], res["new_size"])
             )
         self.start_button.config(state="normal")
+        self.browse_button.config(state="normal")
 
     @staticmethod
     def format_size(bytes_size):
