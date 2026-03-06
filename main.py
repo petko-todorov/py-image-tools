@@ -16,7 +16,7 @@ class App(tk.Tk):
         super().__init__()
 
         self.title("Image Tools")
-        self.geometry("700x800")
+        self.geometry("700x900")
         self.configure(padx=20, pady=2, bg="#c2d6d6")
 
         self.work_mode = tk.IntVar(value=1)
@@ -238,7 +238,7 @@ class App(tk.Tk):
         ).pack(pady=(0, 5), side="right")
 
         self.buttons_frame.pack(pady=5)
-        self.start_button.pack(side="left", padx=(10, 0), pady=0)
+        self.start_button.pack(side="left", padx=(10, 0))
 
         self.progress.pack(
             fill="x",
@@ -276,6 +276,7 @@ class App(tk.Tk):
         self.quality.set(75)
         self.open_output_folder_button.pack_forget()
         self.tree_frame.pack_forget()
+        self.progress["value"] = 0
         if new_path:
             self.selected_path.set(new_path)
         else:
@@ -386,21 +387,27 @@ class App(tk.Tk):
         if os.path.isfile(path):
             files_to_process.append(path)
             output_dir = os.path.join(os.path.dirname(path), "output")
-        else:  # os.path.isdir(path):
+        else:
             valid_extensions = (".jpg", ".png", ".webp", ".jpeg")
-            files_to_process = [os.path.join(path, f) for f in os.listdir(path)
-                                if f.lower().endswith(valid_extensions)]
+            files_to_process = [
+                os.path.join(path, f)
+                for f in os.listdir(path)
+                if f.lower().endswith(valid_extensions)
+            ]
             output_dir = os.path.join(path, "output")
 
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
         total_files = len(files_to_process)
+
         self.progress["maximum"] = total_files
         self.progress["value"] = 0
 
         target_ext = self.target_format.get().lower()
-        processed_results = []
+
+        for item in self.tree.get_children():
+            self.tree.delete(item)
 
         for index, file_path in enumerate(files_to_process, start=1):
             with Image.open(file_path) as image:
@@ -421,30 +428,27 @@ class App(tk.Tk):
                 )
 
                 new_size = os.path.getsize(save_path)
-                processed_results.append({
-                    "name": os.path.basename(file_path),
-                    "resolution": f"{image.width}x{image.height} -> {new_w}x{new_h}",
-                    "type": f"{image.format} -> {target_ext.upper()}",
-                    "old_size": self.format_size(os.path.getsize(file_path)),
-                    "new_size": self.format_size(new_size)
-                })
+
+                self.tree.insert(
+                    "",
+                    "end",
+                    values=(
+                        os.path.basename(file_path),
+                        f"{image.width}x{image.height} -> {new_w}x{new_h}",
+                        f"{image.format} -> {target_ext.upper()}",
+                        self.format_size(os.path.getsize(file_path)),
+                        self.format_size(new_size)
+                    )
+                )
+                self.tree.see(self.tree.get_children()[-1])
 
                 self.progress["value"] = index
                 self.update_idletasks()
 
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
-        for res in processed_results:
-            self.tree.insert(
-                "",
-                "end",
-                values=(res["name"], res["resolution"], res["type"], res["old_size"], res["new_size"])
-            )
         self.start_button.config(state="normal")
         self.browse_button.config(state="normal")
 
-        self.open_output_folder_button.pack(side="left", padx=10, pady=10)
+        self.open_output_folder_button.pack(side="left", padx=10)
 
     @staticmethod
     def open_output_folder(path):
