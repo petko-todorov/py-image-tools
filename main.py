@@ -1,6 +1,7 @@
 import os
 import threading
 import tkinter as tk
+import webbrowser
 from pathlib import Path
 from tkinter import filedialog, ttk
 
@@ -52,11 +53,25 @@ class App(tk.Tk):
         self.quality = tk.IntVar(value=75)
         self.quality.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
 
-        self.start_button = tk.Button(
+        self.buttons_frame = tk.Frame(
             self.settings_frame,
+            padx=15,
+            pady=15,
+        )
+        self.start_button = tk.Button(
+            self.buttons_frame,
             text="Start",
             command=self.run_processing_thread,
             width=10,
+            height=2
+        )
+
+        self.are_images_done = False
+        self.open_output_folder_button = tk.Button(
+            self.buttons_frame,
+            text="Open Output Folder",
+            command=lambda: self.open_output_folder(self.selected_path.get()),
+            width=15,
             height=2
         )
 
@@ -162,64 +177,68 @@ class App(tk.Tk):
         self.browse_button.pack(side="right")
 
         format_frame = tk.Frame(self.settings_frame)
-        format_frame.pack(fill="x", pady=(0, 5))
-        inner_container_format = tk.Frame(format_frame)
-        inner_container_format.pack(anchor="center")
+        format_frame.pack(fill="x", pady=(0, 10), padx=30)
+        # inner_container_format = tk.Frame(format_frame)
+        # inner_container_format.pack(anchor="center")
         tk.Label(
-            inner_container_format,
-            text="Target Format"
-        ).pack(side="left")
+            format_frame,
+            text="Target Format",
+            font=("Arial", 14)
+        ).pack(side="left", padx=(20, 0))
         format_options = ttk.Combobox(
-            inner_container_format,
+            format_frame,
             textvariable=self.target_format,
             values=self.target_format_types,
             state="readonly",
-            font=("Arial", 14),
+            font=("Arial", 18),
             width=15
         )
-        format_options.bind("<<ComboboxSelected>>", lambda e: inner_container_format.focus())
-        format_options.pack(side="left", padx=(10, 0))
+        format_options.bind("<<ComboboxSelected>>", lambda e: format_frame.focus())
+        format_options.pack(side="right")
 
         resize_frame = tk.Frame(self.settings_frame)
-        resize_frame.pack(fill="x", pady=(0, 5))
-        inner_container_resize = tk.Frame(resize_frame)
-        inner_container_resize.pack(anchor="center")
+        resize_frame.pack(fill="x", pady=(0, 5), padx=30)
+        # inner_container_resize = tk.Frame(resize_frame)
+        # inner_container_resize.pack(anchor="center")
         tk.Label(
-            inner_container_resize,
+            resize_frame,
             text="Resize",
-        ).pack(side="left")
+            font=("Arial", 14)
+        ).pack(side="left", padx=(20, 0))
         resize_options = ttk.Combobox(
-            inner_container_resize,
+            resize_frame,
             textvariable=self.resize_percent,
             values=self.RESIZE_OPTIONS,
             state="readonly",
-            font=("Arial", 14),
+            font=("Arial", 18),
             width=15,
         )
-        resize_options.bind("<<ComboboxSelected>>", lambda e: inner_container_resize.focus())
-        resize_options.pack(side="left", padx=(10, 0))
+        resize_options.bind("<<ComboboxSelected>>", lambda e: resize_frame.focus())
+        resize_options.pack(side="right")
 
         quality_frame = tk.Frame(self.settings_frame)
-        quality_frame.pack(fill="x", pady=5)
-        inner_container_quality = tk.Frame(quality_frame)
-        inner_container_quality.pack(anchor="center")
+        quality_frame.pack(fill="x", pady=5, padx=30)
+        # inner_container_quality = tk.Frame(quality_frame)
+        # inner_container_quality.pack(anchor="center")
         tk.Label(
-            inner_container_quality,
-            text="Quality"
-        ).pack(side="left")
+            quality_frame,
+            text="Quality",
+            font=("Arial", 14),
+        ).pack(side="left", padx=20)
         tk.Scale(
-            inner_container_quality,
+            quality_frame,
             from_=0,
             to=100,
             orient="horizontal",
             variable=self.quality,
             width=30,
-            length=400,
+            length=450,
             tickinterval=10,
             font=("Arial", 13),
-        ).pack(pady=(0, 5), side="left")
+        ).pack(pady=(0, 5), side="right")
 
-        self.start_button.pack(pady=10)
+        self.buttons_frame.pack(pady=5)
+        self.start_button.pack(side="left", padx=(10, 0), pady=0)
 
         self.progress.pack(
             fill="x",
@@ -255,6 +274,7 @@ class App(tk.Tk):
         self.target_format.set("WEBP")
         self.resize_percent.set("100%")
         self.quality.set(75)
+        self.open_output_folder_button.pack_forget()
         self.tree_frame.pack_forget()
         if new_path:
             self.selected_path.set(new_path)
@@ -357,6 +377,7 @@ class App(tk.Tk):
         thread.start()
 
     def start_processing(self, path):
+        self.open_output_folder_button.pack_forget()
         percent_str = self.resize_percent.get()
         scale_factor = float(percent_str.replace('%', '')) / 100
 
@@ -422,6 +443,18 @@ class App(tk.Tk):
             )
         self.start_button.config(state="normal")
         self.browse_button.config(state="normal")
+
+        self.open_output_folder_button.pack(side="left", padx=10, pady=10)
+
+    @staticmethod
+    def open_output_folder(path):
+        if os.path.isfile(path):
+            base_dir = os.path.dirname(path)
+        else:
+            base_dir = path
+
+        output_dir = os.path.join(base_dir, "output")
+        webbrowser.open(f"file://{output_dir}")
 
     @staticmethod
     def format_size(bytes_size):
