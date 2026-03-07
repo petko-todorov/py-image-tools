@@ -24,13 +24,25 @@
     cd py-image-tools
     ```
 
-2.  **Install requirements:**
+2.  **Set up a virtual environment (Optional but Recommended):**
+    #### Windows 
+    ```bash
+    python -m venv .venv
+    .venv\Scripts\activate
+    ```
+    #### Linux
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    ```
+    
+3. **Install requirements:**
     The project relies on the `Pillow` library for image manipulation.
     ```bash
     pip install -r requirements.txt
     ```
 
-3.  **Run the application:**
+4.  **Run the application:**
     ```bash
     python main.py
     ```
