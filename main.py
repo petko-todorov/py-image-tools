@@ -10,7 +10,7 @@ from PIL import Image
 
 class App(tk.Tk):
     RESIZE_OPTIONS = ["25%", "33.3%", "50%", "100%", "200%", "400%"]
-    FILES_TYPES = ["JPG", "PNG", "WEBP", "JPEG"]
+    VALID_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff")
 
     def __init__(self):
         super().__init__()
@@ -295,14 +295,14 @@ class App(tk.Tk):
         self.browse_button.config(state="normal")
         if self.work_mode.get() == 1:
             path = filedialog.askopenfilename(
-                filetypes=[("Images", "*.jpg *.png *.webp *.jpeg")]
+                filetypes=[("Images", "*.jpg *.jpeg *.png *.webp *.bmp *.tiff")]
             )
         else:
             path = filedialog.askdirectory()
 
         if path:
             self.update_ui(new_path=path)
-            valid_extensions = (".jpg", ".png", ".webp", ".jpeg")
+            valid_extensions = self.VALID_EXTENSIONS
             if os.path.isdir(path):
                 files = [f for f in os.listdir(path) if f.lower().endswith(valid_extensions)]
                 count = len(files)
@@ -332,7 +332,7 @@ class App(tk.Tk):
         if folder_path == "No path selected...":
             return
 
-        self.images_count = len([x for x in os.listdir(folder_path) if x.endswith((".jpg", ".png", ".webp", ".jpeg"))])
+        self.images_count = len([x for x in os.listdir(folder_path) if x.lower().endswith(self.VALID_EXTENSIONS)])
         self.settings_frame.config(text=f"  Settings (Images found: {self.images_count})  ")
 
     def populate_tree(self, path):
@@ -342,7 +342,7 @@ class App(tk.Tk):
         scale = float(self.resize_percent.get().replace('%', '')) / 100
         target_format = self.target_format.get()
 
-        valid_extensions = {f".{ext.lower()}" for ext in self.FILES_TYPES}
+        valid_extensions = {f".{ext.lower()}" for ext in self.VALID_EXTENSIONS}
         if Path(path).is_dir():
             files = [str(p) for p in Path(path).iterdir() if p.suffix.lower() in valid_extensions]
         elif Path(path).is_file():
@@ -395,7 +395,7 @@ class App(tk.Tk):
             files_to_process.append(path)
             output_dir = os.path.join(os.path.dirname(path), "output")
         else:
-            valid_extensions = (".jpg", ".png", ".webp", ".jpeg")
+            valid_extensions = self.VALID_EXTENSIONS
             files_to_process = [
                 os.path.join(path, f)
                 for f in os.listdir(path)
@@ -424,7 +424,7 @@ class App(tk.Tk):
                 new_img = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
                 save_format = "JPEG" if target_ext in ["jpg", "jpeg"] else target_ext.upper()
-                if save_format == "JPEG" and new_img.mode in ("RGBA", "P", "LA"):
+                if save_format in ["JPEG", "BMP"] and new_img.mode in ("RGBA", "P", "LA"):
                     new_img = new_img.convert("RGB")
 
                 save_path = Path(output_dir) / Path(file_path).with_suffix(f".{target_ext}").name
