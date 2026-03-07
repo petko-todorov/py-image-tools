@@ -19,6 +19,22 @@ class App(tk.Tk):
         self.geometry("700x900")
         self.configure(padx=20, pady=2, bg="#c2d6d6")
 
+        self.title_label = tk.Label(
+            self,
+            text="Image Tools",
+            font=("Helvetica", 24, "bold"),
+            fg="#2c3e50",
+            bg="#c2d6d6"
+        )
+
+        self.mode_frame = tk.LabelFrame(
+            self,
+            text="  Operation Mode  ",
+            labelanchor="n",
+            padx=15,
+            pady=10,
+        )
+
         self.work_mode = tk.IntVar(value=1)
         self.last_mode = None
 
@@ -38,6 +54,22 @@ class App(tk.Tk):
             fg="#800020"
         )
 
+        self.path_frame = tk.LabelFrame(
+            self,
+            text="  Path  ",
+            labelanchor="n",
+            padx=15,
+            pady=10
+        )
+
+        self.path_entry = tk.Entry(
+            self.path_frame,
+            textvariable=self.selected_path,
+            state="readonly",
+            width=40,
+            font=("Arial", 11)
+        )
+
         self.settings_frame = tk.LabelFrame(
             self,
             text="  Settings  ",
@@ -46,12 +78,39 @@ class App(tk.Tk):
             pady=15,
         )
 
+        self.format_frame = tk.Frame(self.settings_frame)
+
         self.target_format = tk.StringVar(value="WEBP")
         self.target_format.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
         self.target_format_types = self.FILES_TYPES
 
+        self.format_options = ttk.Combobox(
+            self.format_frame,
+            textvariable=self.target_format,
+            values=self.target_format_types,
+            state="readonly",
+            font=("Arial", 18),
+            width=15
+        )
+
         self.quality = tk.IntVar(value=75)
         self.quality.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
+
+        self.resize_percent = tk.StringVar(value="100%")
+        self.resize_percent.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
+
+        self.resize_frame = tk.Frame(self.settings_frame)
+
+        self.resize_options = ttk.Combobox(
+            self.resize_frame,
+            textvariable=self.resize_percent,
+            values=self.RESIZE_OPTIONS,
+            state="readonly",
+            font=("Arial", 18),
+            width=15,
+        )
+
+        self.quality_frame = tk.Frame(self.settings_frame)
 
         self.buttons_frame = tk.Frame(
             self.settings_frame,
@@ -91,9 +150,6 @@ class App(tk.Tk):
             show="headings",
         )
 
-        self.resize_percent = tk.StringVar(value="100%")
-        self.resize_percent.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
-
         self.progress = ttk.Progressbar(
             self.settings_frame,
             orient="horizontal",
@@ -103,29 +159,15 @@ class App(tk.Tk):
         self.setup_ui()
 
     def setup_ui(self):
-        title_label = tk.Label(
-            self,
-            text="Image Tools",
-            font=("Helvetica", 24, "bold"),
-            fg="#2c3e50",
-            bg="#c2d6d6"
-        )
-        title_label.pack(pady=(0, 5))
+        self.title_label.pack(pady=(0, 5))
 
-        mode_frame = tk.LabelFrame(
-            self,
-            text="  Operation Mode  ",
-            labelanchor="n",
-            padx=15,
-            pady=10,
-        )
-        mode_frame.pack(
+        self.mode_frame.pack(
             fill="x",
             pady=(0, 5)
         )
 
         self.single_image_mode = tk.Radiobutton(
-            mode_frame,
+            self.mode_frame,
             text="Single Image File",
             variable=self.work_mode,
             value=1,
@@ -135,7 +177,7 @@ class App(tk.Tk):
         self.single_image_mode.pack(anchor="w")
 
         self.batch_folder_mode = tk.Radiobutton(
-            mode_frame,
+            self.mode_frame,
             text="Entire Folder (Batch)",
             variable=self.work_mode,
             value=2,
@@ -144,23 +186,9 @@ class App(tk.Tk):
         )
         self.batch_folder_mode.pack(anchor="w")
 
-        path_frame = tk.LabelFrame(
-            self,
-            text="  Path  ",
-            labelanchor="n",
-            padx=15,
-            pady=10
-        )
-        path_frame.pack(fill="x", pady=(0, 5))
+        self.path_frame.pack(fill="x", pady=(0, 5))
 
-        path_entry = tk.Entry(
-            path_frame,
-            textvariable=self.selected_path,
-            state="readonly",
-            width=40,
-            font=("Arial", 11)
-        )
-        path_entry.pack(
+        self.path_entry.pack(
             side="left",
             padx=(0, 10),
             expand=True,
@@ -168,7 +196,7 @@ class App(tk.Tk):
         )
 
         self.browse_button = tk.Button(
-            path_frame,
+            self.path_frame,
             text="Browse",
             command=self.browse_path,
             width=10,
@@ -176,57 +204,34 @@ class App(tk.Tk):
         )
         self.browse_button.pack(side="right")
 
-        format_frame = tk.Frame(self.settings_frame)
-        format_frame.pack(fill="x", pady=(0, 10), padx=30)
-        # inner_container_format = tk.Frame(format_frame)
-        # inner_container_format.pack(anchor="center")
+        self.format_frame.pack(fill="x", pady=(0, 10), padx=30)
         tk.Label(
-            format_frame,
+            self.format_frame,
             text="Target Format",
             font=("Arial", 14)
         ).pack(side="left", padx=(20, 0))
-        format_options = ttk.Combobox(
-            format_frame,
-            textvariable=self.target_format,
-            values=self.target_format_types,
-            state="readonly",
-            font=("Arial", 18),
-            width=15
-        )
-        format_options.bind("<<ComboboxSelected>>", lambda e: format_frame.focus())
-        format_options.pack(side="right")
 
-        resize_frame = tk.Frame(self.settings_frame)
-        resize_frame.pack(fill="x", pady=(0, 5), padx=30)
-        # inner_container_resize = tk.Frame(resize_frame)
-        # inner_container_resize.pack(anchor="center")
+        self.format_options.bind("<<ComboboxSelected>>", lambda e: self.format_frame.focus())
+        self.format_options.pack(side="right")
+
+        self.resize_frame.pack(fill="x", pady=(0, 5), padx=30)
         tk.Label(
-            resize_frame,
+            self.resize_frame,
             text="Resize",
             font=("Arial", 14)
         ).pack(side="left", padx=(20, 0))
-        resize_options = ttk.Combobox(
-            resize_frame,
-            textvariable=self.resize_percent,
-            values=self.RESIZE_OPTIONS,
-            state="readonly",
-            font=("Arial", 18),
-            width=15,
-        )
-        resize_options.bind("<<ComboboxSelected>>", lambda e: resize_frame.focus())
-        resize_options.pack(side="right")
 
-        quality_frame = tk.Frame(self.settings_frame)
-        quality_frame.pack(fill="x", pady=5, padx=30)
-        # inner_container_quality = tk.Frame(quality_frame)
-        # inner_container_quality.pack(anchor="center")
+        self.resize_options.bind("<<ComboboxSelected>>", lambda e: self.resize_frame.focus())
+        self.resize_options.pack(side="right")
+
+        self.quality_frame.pack(fill="x", pady=5, padx=30)
         tk.Label(
-            quality_frame,
+            self.quality_frame,
             text="Quality",
             font=("Arial", 14),
         ).pack(side="left", padx=20)
         tk.Scale(
-            quality_frame,
+            self.quality_frame,
             from_=0,
             to=100,
             orient="horizontal",
@@ -372,6 +377,8 @@ class App(tk.Tk):
 
         self.start_button.config(state="disabled")
         self.browse_button.config(state="disabled")
+        self.format_options.config(state="disabled")
+        self.resize_options.config(state="disabled")
 
         thread = threading.Thread(target=self.start_processing, args=(path,))
         thread.daemon = True
@@ -447,6 +454,8 @@ class App(tk.Tk):
 
         self.start_button.config(state="normal")
         self.browse_button.config(state="normal")
+        self.format_options.config(state="normal")
+        self.resize_options.config(state="normal")
 
         self.open_output_folder_button.pack(side="left", padx=10)
 
