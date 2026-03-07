@@ -20,7 +20,7 @@
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/petko-todorov/py-image-tools.git](https://github.com/petko-todorov/py-image-tools.git)
+    git clone https://github.com/petko-todorov/py-image-tools.git
     cd py-image-tools
     ```
 
