@@ -16,7 +16,8 @@ class App(tk.Tk):
         super().__init__()
 
         self.title("Image Tools")
-        self.geometry("700x900")
+        self.geometry("700x900+500+50")
+        self.resizable(False, False)
         self.configure(padx=20, pady=2, bg="#c2d6d6")
 
         self.title_label = tk.Label(
@@ -82,7 +83,7 @@ class App(tk.Tk):
 
         self.target_format = tk.StringVar(value="WEBP")
         self.target_format.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
-        self.target_format_types = self.FILES_TYPES
+        self.target_format_types = self.VALID_EXTENSIONS
 
         self.format_options = ttk.Combobox(
             self.format_frame,
@@ -342,7 +343,7 @@ class App(tk.Tk):
         scale = float(self.resize_percent.get().replace('%', '')) / 100
         target_format = self.target_format.get()
 
-        valid_extensions = {f".{ext.lower()}" for ext in self.VALID_EXTENSIONS}
+        valid_extensions = {ext.lower() for ext in self.VALID_EXTENSIONS}
         if Path(path).is_dir():
             files = [str(p) for p in Path(path).iterdir() if p.suffix.lower() in valid_extensions]
         elif Path(path).is_file():
