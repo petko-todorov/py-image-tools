@@ -1,4 +1,5 @@
 import os
+import sys
 import threading
 import tkinter as tk
 import webbrowser
@@ -16,6 +17,7 @@ class App(tk.Tk):
         super().__init__()
 
         self.title("Image Tools")
+        self.iconbitmap(self.resource_path("icon.ico"))
         self.geometry("700x900+500+50")
         self.resizable(False, False)
         self.configure(padx=20, pady=2, bg="#c2d6d6")
@@ -83,7 +85,7 @@ class App(tk.Tk):
 
         self.target_format = tk.StringVar(value="WEBP")
         self.target_format.trace_add("write", lambda name, index, mode: self.populate_tree(self.selected_path.get()))
-        self.target_format_types = self.VALID_EXTENSIONS
+        self.target_format_types = [ext.replace(".", "").upper() for ext in self.VALID_EXTENSIONS]
 
         self.format_options = ttk.Combobox(
             self.format_frame,
@@ -476,6 +478,14 @@ class App(tk.Tk):
         if kb < 1024:
             return f"{kb:.1f} KB"
         return f"{kb / 1024:.2f} MB"
+
+    @staticmethod
+    def resource_path(relative_path):
+        try:
+            base_path = sys._MEIPASS
+        except Exception as e:
+            base_path = os.path.abspath(".")
+        return os.path.join(base_path, relative_path)
 
 
 if __name__ == "__main__":
